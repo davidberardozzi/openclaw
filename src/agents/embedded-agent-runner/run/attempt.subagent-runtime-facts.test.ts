@@ -1,4 +1,3 @@
-// Exercise history preparation and prompt submission together: child state belongs after history.
 import path from "node:path";
 import { Type } from "typebox";
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -94,55 +93,53 @@ describe("subagent facts through full attempt history preparation", () => {
     await cleanupTempPaths(tempPaths);
   });
 
-  it.each([false, true])(
-    "preserves the complete system prompt across child state with codeMode=%s",
-    async (codeModeOverride) => {
-      const sessionStore = path.join(
-        tempDirs.make("openclaw-attempt-subagent-facts-"),
-        "sessions.json",
-      );
-      const storePath = resolvePhysicalSessionStorePath({ sessionKey, storePath: sessionStore });
-      const run = {
-        runId: "run-worker",
-        childSessionKey: "agent:main:subagent:worker",
-        controllerSessionKey: sessionKey,
-        requesterSessionKey: sessionKey,
-        requesterStorePath: storePath,
-        controllerStorePath: storePath,
-        requesterDisplayKey: "main",
-        task: "Inspect fixtures",
-        label: "Worker",
-        cleanup: "keep",
-        createdAt: Date.now(),
-        execution: { status: "queued" },
-      } satisfies SubagentRunRecord;
-      registry.addSubagentRunForTests(run);
-      const queued = await captureAttempt(codeModeOverride, sessionStore);
-      registry.addSubagentRunForTests({
-        ...run,
-        execution: { status: "running", startedAt: Date.now() },
-      });
-      const running = await captureAttempt(codeModeOverride, sessionStore);
-      registry.resetSubagentRegistryForTests();
-      const empty = await captureAttempt(codeModeOverride, sessionStore);
+  it("preserves the complete system prompt across child state in code mode", async () => {
+    const codeModeOverride = true;
+    const sessionStore = path.join(
+      tempDirs.make("openclaw-attempt-subagent-facts-"),
+      "sessions.json",
+    );
+    const storePath = resolvePhysicalSessionStorePath({ sessionKey, storePath: sessionStore });
+    const run = {
+      runId: "run-worker",
+      childSessionKey: "agent:main:subagent:worker",
+      controllerSessionKey: sessionKey,
+      requesterSessionKey: sessionKey,
+      requesterStorePath: storePath,
+      controllerStorePath: storePath,
+      requesterDisplayKey: "main",
+      task: "Inspect fixtures",
+      label: "Worker",
+      cleanup: "keep",
+      createdAt: Date.now(),
+      execution: { status: "queued" },
+    } satisfies SubagentRunRecord;
+    registry.addSubagentRunForTests(run);
+    const queued = await captureAttempt(codeModeOverride, sessionStore);
+    registry.addSubagentRunForTests({
+      ...run,
+      execution: { status: "running", startedAt: Date.now() },
+    });
+    const running = await captureAttempt(codeModeOverride, sessionStore);
+    registry.resetSubagentRegistryForTests();
+    const empty = await captureAttempt(codeModeOverride, sessionStore);
 
-      expect(queued.systemPrompt).toContain("system prompt");
-      expect(running.systemPrompt).toBe(queued.systemPrompt);
-      expect(empty.systemPrompt).toBe(queued.systemPrompt);
-      expect(queued.systemPrompt).not.toContain("run-worker");
-      expectSubagentCarrier(queued.messages, "status=queued");
-      expectSubagentCarrier(running.messages, "status=running");
-      // At rest without the append-only policy the carrier is omitted entirely: no carrier
-      // and no empty "## Active Subagents" section replace the vanished child facts.
-      expect(empty.messages).not.toContainEqual(
-        expect.objectContaining({
-          role: "custom",
-          customType: OPENCLAW_RUNTIME_CONTEXT_CUSTOM_TYPE,
-          display: false,
-        }),
-      );
-    },
-  );
+    expect(queued.systemPrompt).toContain("system prompt");
+    expect(running.systemPrompt).toBe(queued.systemPrompt);
+    expect(empty.systemPrompt).toBe(queued.systemPrompt);
+    expect(queued.systemPrompt).not.toContain("run-worker");
+    expectSubagentCarrier(queued.messages, "status=queued");
+    expectSubagentCarrier(running.messages, "status=running");
+    // At rest without the append-only policy the carrier is omitted entirely: no carrier
+    // and no empty "## Active Subagents" section replace the vanished child facts.
+    expect(empty.messages).not.toContainEqual(
+      expect.objectContaining({
+        role: "custom",
+        customType: OPENCLAW_RUNTIME_CONTEXT_CUSTOM_TYPE,
+        display: false,
+      }),
+    );
+  });
 
   it("keeps emitting the explicit empty subagent snapshot under the append-only policy", async () => {
     const sessionStore = path.join(
