@@ -153,17 +153,19 @@ describe("media task runtime facts", () => {
 
     read.mockReturnValue([]);
     expect(await buildRuntimeFactsContext(mediaParams)).toEqual([]);
-    expect(await buildRuntimeFactsContext({ ...mediaParams, includeEmptySnapshots: true })).toEqual([
-      {
-        kind: "conversation-data",
-        text: [
-          "## Media Generation Tasks",
-          "- tool=image_generate; none",
-          "- tool=music_generate; none",
-          "- tool=video_generate; none",
-        ].join("\n"),
-      },
-    ]);
+    expect(await buildRuntimeFactsContext({ ...mediaParams, includeEmptySnapshots: true })).toEqual(
+      [
+        {
+          kind: "conversation-data",
+          text: [
+            "## Media Generation Tasks",
+            "- tool=image_generate; none",
+            "- tool=music_generate; none",
+            "- tool=video_generate; none",
+          ].join("\n"),
+        },
+      ],
+    );
     expect(read).toHaveBeenCalledTimes(3);
   });
 
